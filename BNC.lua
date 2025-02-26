@@ -34,7 +34,7 @@ local Window = Rayfield:CreateWindow({
    }
 })
 
-local MainTab = Window:CreateTab("🎮메인 탭🎮", nil) -- Title, Image
+local MainTab = Window:CreateTab("🎮ㆍ메인 탭", nil) -- Title, Image
 local MainSection = MainTab:CreateSection("ESP")
 
 Rayfield:Notify({
@@ -45,131 +45,113 @@ Rayfield:Notify({
  })
 
 local Button = MainTab:CreateButton({
-   Name = "플레이어 윤곽선 ESP",
+   Name = "플레이어 ESP",
    Callback = function()
    local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
--- 윤곽선 강조 함수
-local function highlightOutline(player)
-    if not player.Character or not player.Character.PrimaryPart then
-        return
+-- 캐릭터에 윤곽선 강조 추가
+local function updateHighlight(character, team)
+    -- 기존 강조 삭제
+    local existingHighlight = character:FindFirstChild("TeamHighlight")
+    if existingHighlight then
+        existingHighlight:Destroy()
     end
 
-    -- 기존에 Highlight가 있으면 제거
-    for _, child in ipairs(player.Character:GetChildren()) do
-        if child:IsA("Highlight") then
-            child:Destroy()
-        end
-    end
-
-    -- 윤곽선 강조
-    local highlight = Instance.new("Highlight")
-    highlight.Parent = player.Character
-    highlight.FillColor = Color3.new(0, 0, 1)  -- 윤곽선 내부 색상
-    highlight.OutlineColor = Color3.new(1, 1, 0)  -- 윤곽선 색상
-end
-
--- 플레이어가 새로 추가될 때마다 처리
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        highlightOutline(player)
-    end)
-end)
-
--- 모든 플레이어 강조 (윤곽선)
-local function highlightPlayers()
-    for _, player in ipairs(Players:GetPlayers()) do
-        highlightOutline(player)
+    if team then
+        local teamColor = team.TeamColor.Color
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "TeamHighlight"
+        highlight.Parent = character
+        highlight.FillTransparency = 0.6
+        highlight.OutlineTransparency = 0.2
+        highlight.FillColor = teamColor  -- 팀 색상
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 0)  -- 윤곽선 노란색
     end
 end
 
--- 주기적으로 플레이어 강조
-task.spawn(function()
-    while true do
-        highlightPlayers()
-        task.wait(5) 
-    end
-end)
-
-highlightPlayers()  -- 시작 시 모든 플레이어 강조
-
-   end,
-})
-
-local Button = MainTab:CreateButton({
-   Name = "플레이어 거리 ESP",
-   Callback = function()
-   local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
-local function highlightDistance(player)
-    if not player.Character or not player.Character.PrimaryPart then
-        return
-    end
-
-    -- 기존에 BillboardGui가 있으면 제거
-    for _, child in ipairs(player.Character:GetChildren()) do
-        if child:IsA("BillboardGui") then
-            child:Destroy()
-        end
-    end
-
-    -- 거리 표시
-    local billboard = Instance.new("BillboardGui")
-    billboard.Size = UDim2.new(0, 100, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 2, 0)
-    billboard.Adornee = player.Character.PrimaryPart
-    billboard.Parent = player.Character.PrimaryPart
-    billboard.AlwaysOnTop = true
-
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextColor3 = Color3.new(0, 0, 1)  -- 텍스트 색상
-    textLabel.TextStrokeColor3 = Color3.new(1, 1, 0)  -- 텍스트 윤곽선 색상
-    textLabel.TextStrokeTransparency = 0.5
-    textLabel.TextScaled = false
-    textLabel.TextSize = 20  -- 텍스트 크기
-    textLabel.Parent = billboard
-
-    -- 거리 계산
+-- 닉네임 & 거리 텍스트 강조 추가
+local function ensureTextHighlight(player)
     RunService.RenderStepped:Connect(function()
         if player.Character and player.Character.PrimaryPart then
+            local character = player.Character
+            local primaryPart = character.PrimaryPart
+
+            -- 기존 BillboardGui 확인 (없으면 생성)
+            local existingBillboard = primaryPart:FindFirstChild("PlayerInfoBillboard")
+            if not existingBillboard then
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "PlayerInfoBillboard"
+                billboard.Size = UDim2.new(0, 200, 0, 50)
+                billboard.StudsOffset = Vector3.new(0, 2, 0)
+                billboard.Adornee = primaryPart
+                billboard.Parent = primaryPart
+                billboard.AlwaysOnTop = true
+
+                local textLabel = Instance.new("TextLabel")
+                textLabel.Size = UDim2.new(1, 0, 1, 0)
+                textLabel.BackgroundTransparency = 1
+                textLabel.TextColor3 = Color3.new(1, 1, 1)  -- 흰색 텍스트
+                textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)  -- 검정 윤곽선
+                textLabel.TextStrokeTransparency = 0.5
+                textLabel.TextScaled = false  -- 크기 고정
+                textLabel.TextSize = 14  -- 텍스트 크기
+                textLabel.TextXAlignment = Enum.TextXAlignment.Center
+                textLabel.TextYAlignment = Enum.TextYAlignment.Center
+                textLabel.Parent = billboard
+            end
+
+            -- 거리 업데이트
             local localPlayer = Players.LocalPlayer
             if localPlayer and localPlayer.Character and localPlayer.Character.PrimaryPart then
-                local distance = (player.Character.PrimaryPart.Position - localPlayer.Character.PrimaryPart.Position).Magnitude
+                local distance = (primaryPart.Position - localPlayer.Character.PrimaryPart.Position).Magnitude
+                local roundedDistance = math.floor(distance)
 
-                -- 텍스트에 거리 표시
-                textLabel.Text = string.format("%d m", distance)
+                -- 텍스트 갱신
+                local billboard = primaryPart:FindFirstChild("PlayerInfoBillboard")
+                if billboard then
+                    local textLabel = billboard:FindFirstChildOfClass("TextLabel")
+                    if textLabel then
+                        textLabel.Text = string.format("닉네임 : %s 거리 : %dm", player.Name, roundedDistance)
+                    end
+                end
             end
         end
     end)
 end
 
--- 플레이어들에 대해 거리 강조 적용
-local function highlightPlayers()
-    for _, player in ipairs(Players:GetPlayers()) do
-        highlightDistance(player)
+-- 캐릭터 생성 시 윤곽선 + 텍스트 강조 추가
+local function onCharacterAdded(player, character)
+    if player.Team then
+        updateHighlight(character, player.Team)
+    end
+
+    -- 팀 변경 감지하여 강조 업데이트
+    player:GetPropertyChangedSignal("Team"):Connect(function()
+        updateHighlight(character, player.Team)
+    end)
+
+    -- 텍스트 강조 유지
+    ensureTextHighlight(player)
+end
+
+-- 플레이어 추가 시 처리
+local function onPlayerAdded(player)
+    player.CharacterAdded:Connect(function(character)
+        onCharacterAdded(player, character)
+    end)
+
+    if player.Character then
+        onCharacterAdded(player, player.Character)
     end
 end
 
--- 플레이어 추가시 거리 강조 적용
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        highlightDistance(player)
-    end)
-end)
+-- 기존 플레이어들에게 적용
+for _, player in ipairs(Players:GetPlayers()) do
+    onPlayerAdded(player)
+end
 
--- 반복적으로 거리 강조 적용
-task.spawn(function()
-    while true do
-        highlightPlayers()
-        task.wait(5)
-    end
-end)
-
-highlightPlayers()
+Players.PlayerAdded:Connect(onPlayerAdded)
 
    end,
 })
@@ -283,7 +265,7 @@ end)
    end,
 })
 
-local MainTab = Window:CreateTab("👑관리자 탭👑", nil) -- Title, Image
+local MainTab = Window:CreateTab("👑ㆍ관리자 탭", nil) -- Title, Image
 
 local MainSection = MainTab:CreateSection("권한")
 
@@ -366,7 +348,51 @@ end
    end,
 })
 
-local MainTab = Window:CreateTab("🌍기타 탭🌍", nil) -- Title, Image
+local Button = MainTab:CreateButton({
+   Name = "연속 무한 점프(딜레이 X)",
+   Callback = function()
+   --[[
+	MIT License
+
+	Copyright (c) 2019 WeAreDevs wearedevs.net
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+--]]
+
+_G.infinjump = not _G.infinjump
+
+local plr = game:GetService'Players'.LocalPlayer
+local m = plr:GetMouse()
+m.KeyDown:connect(function(k)
+	if _G.infinjump then
+		if k:byte() == 32 then
+		plrh = game:GetService'Players'.LocalPlayer.Character:FindFirstChildOfClass'Humanoid'
+		plrh:ChangeState('Jumping')
+		wait()
+		plrh:ChangeState('Seated')
+		end
+	end
+end)
+   end,
+})
+
+local MainTab = Window:CreateTab("🌍ㆍ기타 탭", nil) -- Title, Image
 
 local MainSection = MainTab:CreateSection("재미")
 
@@ -384,7 +410,7 @@ local Button = MainTab:CreateButton({
    end,
 })
 
-local MainTab = Window:CreateTab("☢️스크립트 모음☢️", nil) -- Title, Image
+local MainTab = Window:CreateTab("☢️ㆍ스크립트 모음", nil) -- Title, Image
 
 local MainSection = MainTab:CreateSection("게임 종류 ")
 
