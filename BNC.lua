@@ -495,3 +495,11 @@ local Button = MainTab:CreateButton({
    loadstring(game:HttpGet("https://raw.githubusercontent.com/tbao143/thaibao/main/TbaohubPrisonLife"))()
    end,
 })
+
+local Button = MainTab:CreateButton({
+   Name = "킹피스 핵 (KEY : 1IJAvVk9w3 )",
+   Callback = function()
+   repeat wait() until game:IsLoaded()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/DookDekDEE/Hyper/main/script.lua"))()
+   end,
+})
